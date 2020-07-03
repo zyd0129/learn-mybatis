@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.learn.dao.mapper.UserMapper">
+    <resultMap id="userMap" type="User">
+        <association property="teacher" javaType="Teacher">
+            <result property="id" column="tid"/>
+            <result property="name" column="tname"/>
+        </association>
+    </resultMap>
+    <select id="getUserList" resultMap="userMap">
+    select u.*, t.id tid, t.name tname from mybatis.user as u, mybatis.teacher as t where u.tid=t.id
+    </select>
+
+    <select id="getUserLike" parameterType="string" resultType="User">
+    select * from mybatis.user where name like "%"#{name}"%"
+  </select>
+</mapper>
