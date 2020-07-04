@@ -5,6 +5,6 @@ import mybatis.learn.dao.entities.User;
 
 import java.util.List;
 
-public interface TeacherMapper {
+public interface TeacherMapper  extends  BaseMapper{
     Teacher getById(int id);
 }

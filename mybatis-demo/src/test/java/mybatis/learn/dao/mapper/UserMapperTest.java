@@ -13,6 +13,15 @@ import static org.junit.Assert.*;
 public class UserMapperTest {
 
     @Test
+    public void statementId() {
+        SqlSession sqlSession = MybatisUtils.getSqlSession();
+
+        Teacher teacher = sqlSession.selectOne("mybatis.learn.dao.mapper.TeacherMapper.getById",1);
+        System.out.println(teacher);
+        sqlSession.close();
+    }
+
+    @Test
     public void getUserListTest(){
         SqlSession sqlSession = MybatisUtils.getSqlSession();
 
