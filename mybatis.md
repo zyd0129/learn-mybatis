@@ -97,7 +97,55 @@ resultMap结果映射
     </resultMap>
 ```
 
+参数，mapper调用，需要参数处理：
 
+- 单个参数
+- 多个参数 封装成map，按照0，1。。。或者 param1,param2... 如果使用@Param可以指定参数名
+- Map
+- 如果是List, 封装成map,key是list
+
+源码
+
+1. 先封装一个names, key:顺序下标，value是参数名，如果使用了@Param，则是Param名，如果不是则是顺序下标 ParamNameResolver构造函数，生成names
+
+2. 将args封装成一个ParamMap，名称是names[Value],key是args[names[key]] ，另外增加了param1,param2...参数名
+
+   getNamedParams方法生成
+
+这样我们就可以在sql里使用参数名
+
+想想两种调用方式
+
+直接通过statement id,调用 sqlSession.selectList(String statement, Object parameter, RowBounds rowBounds);
+
+通过mapper调用，我们就是把方法参数，转换成parameter，因为mapper代理对象也是最终调用sqlSession的方法。
+
+
+
+枚举类型(默认类型)
+
+![image-20200705155849957](/Users/yudong/learn/alibaba/java/imgs/image-20200705155849957.png)
+
+默认是使用name
+
+```java
+System.out.println(StatusEnum.SUCCESS.ordinal());
+System.out.println(StatusEnum.SUCCESS.name());
+```
+
+在配置文件里增加
+
+<typeHandlers><typeHandler handler javaType>
+
+自定义枚举类型
+
+![image-20200705160256376](/Users/yudong/learn/alibaba/java/imgs/image-20200705160256376.png)
+
+需要自定义typeHandler
+
+![image-20200705160754078](/Users/yudong/learn/alibaba/java/imgs/image-20200705160754078.png)
+
+对象
 
 多表查询， 几种实现方式
 
@@ -269,7 +317,7 @@ public UserMapper userMapper() throws Exception {
 }
 ```
 
-
+执行批量的时候，可以单独配置一个sqlSession,设置批量executor 在service里注入sqlsession手动获取mapper
 
 # Mybatis Plus
 
@@ -298,7 +346,7 @@ public UserMapper userMapper() throws Exception {
    Teacher teacher = teacherMapper.getById(1);
    ```
 
-## 二、动态代理原理
+### 动态代理原理
 
 1.JDK代理，（接口代理）
 
@@ -323,3 +371,288 @@ method.getDeclaringClass() 获取该方法所属的class，即在哪个class里�
 Proxy类有一个InvocationHandler属性
 
 生成的类$Proxy0里的接口方法里，会调用ths.h.invoke()  h为创建是传进去的 InvocationHandler， Proxy类实例化代理类时，会将invocationHanler传进去。
+
+## 二、架构原理
+
+![image-20200704204438286](/Users/yudong/learn/alibaba/java/imgs/image-20200704204438286.png)
+
+![image-20200704204939570](/Users/yudong/learn/alibaba/java/imgs/image-20200704204939570.png)
+
+![image-20200704205020374](/Users/yudong/learn/alibaba/java/imgs/image-20200704205020374.png)
+
+executor负责缓存的维护
+
+![image-20200704205252581](/Users/yudong/learn/alibaba/java/imgs/image-20200704205252581.png)
+
+解析过程：
+
+![image-2020070533423397](/Users/yudong/learn/alibaba/java/imgs/image-20200705133423397.png)
+
+有三个主要的解析器 Configure Mapper StatementXmLParser
+
+### 一、创建SqlSessionFactory
+
+SqlSessionFactory是包含Configuration, 基本mybatis是通过解析xml获取，根据Configuration创建SqlSession.
+
+
+
+ ![未命名文件](/Users/yudong/learn/alibaba/java/imgs/未命名文件.png)
+
+### 二、创建sqlSession
+
+![image-20200705134340899](/Users/yudong/learn/alibaba/java/imgs/image-20200705134340899.png)
+
+![未命名文件 (1)](/Users/yudong/learn/alibaba/java/imgs/未命名文件 (1).png)
+
+Executor, 二级缓存CachingExecutor 使用装饰者模式,  比如SimpleExecutor套CachingExecutor
+
+```java
+public Executor newExecutor(Transaction transaction, ExecutorType executorType) {
+    executorType = executorType == null ? defaultExecutorType : executorType;
+    executorType = executorType == null ? ExecutorType.SIMPLE : executorType;
+    Executor executor;
+    if (ExecutorType.BATCH == executorType) {
+      executor = new BatchExecutor(this, transaction);
+    } else if (ExecutorType.REUSE == executorType) {
+      executor = new ReuseExecutor(this, transaction);
+    } else {
+      executor = new SimpleExecutor(this, transaction);
+    }
+    if (cacheEnabled) {
+      executor = new CachingExecutor(executor);
+    }
+    executor = (Executor) interceptorChain.pluginAll(executor);
+    return executor;
+  }
+```
+
+插件也在这里调用一次。(Executor) interceptorChain.pluginAll(executor)是一种无拦截的责任链+代理模式,对executor增强
+
+```java
+public Object pluginAll(Object target) {
+    for (Interceptor interceptor : interceptors) {
+      target = interceptor.plugin(target);
+    }
+    return target;
+  }
+```
+
+### 三、创建mapper
+
+![image-20200705135028764](/Users/yudong/learn/alibaba/java/imgs/image-20200705135028764.png)
+
+mapper的创建使用的是代理模式
+
+```java
+public class MapperProxyFactory<T> {
+
+  private final Class<T> mapperInterface;
+  private final Map<Method, MapperMethodInvoker> methodCache = new ConcurrentHashMap<>();
+
+  public MapperProxyFactory(Class<T> mapperInterface) {
+    this.mapperInterface = mapperInterface;
+  }
+
+  public Class<T> getMapperInterface() {
+    return mapperInterface;
+  }
+
+  public Map<Method, MapperMethodInvoker> getMethodCache() {
+    return methodCache;
+  }
+
+  @SuppressWarnings("unchecked")
+  protected T newInstance(MapperProxy<T> mapperProxy) {
+    return (T) Proxy.newProxyInstance(mapperInterface.getClassLoader(), new Class[] { mapperInterface }, mapperProxy);
+  }
+
+  public T newInstance(SqlSession sqlSession) {
+    final MapperProxy<T> mapperProxy = new MapperProxy<>(sqlSession, mapperInterface, methodCache);
+    return newInstance(mapperProxy);
+  }
+
+}
+```
+
+```java
+configuration
+public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
+    return mapperRegistry.getMapper(type, sqlSession);
+  }
+public <T> void addMapper(Class<T> type) {
+    mapperRegistry.addMapper(type);
+  }
+```
+
+
+
+一个mapper指的是接口，基本mybatis不能重复扫描。xml文件是定义mappedStatement. mapper接口如果要和xml对应，需要遵循一些约定，namespace要是接口限定名，节点id要和方法对应，包括parameteType, resultType都要一一对应。
+
+扫描mapper的时候会扫描当前包下是否存在同名xml文件，如果存在加载并解析。
+
+Mybatis-spring扫描mapper的几种方式
+
+1. @Mapper
+
+2. @MapperScan
+
+3. ```java
+   <bean id="userMapper" class="org.mybatis.spring.mapper.MapperFactoryBean">
+     <property name="mapperInterface" value="org.mybatis.spring.sample.mapper.UserMapper" />
+     <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+   </bean>
+   ```
+
+4. 在全局配置文件xml中定义<mapper class>使用class方式 或者package方式.
+
+
+
+具体源码，是在MapperFactoryBean初始化之后，会讲mapper注入到configuration中。
+
+之后注入service时，会调用MapperFactoryBean的getObject方法，即getSqlSession().getMapper(this.mapperInterface);获得mapper的代理对象。
+
+创建mapper代理的过程，总结下来就是先解析配置，注册mapper代理工厂，创建的时候，先生成一个sqlSession对象，封装了configuration和executor，之后创建一个MapProxy(实现InvocationHandler), 之后mapper代理工厂，创建对应mapper的代理类。
+
+可以说mapper的所有操作都是由sqlSession完成，sqlSession根据接口方法名，查找对应statement，之后解析、执行、结果转换。
+
+spring中具体是sqlSessionTemplate这个sqlSession实现，但它又把具体操作交给一个代理类sqlSessionProxy。
+
+一个mapper代理实例，对应一个sqlSession.
+
+
+
+### 四、查询流程
+
+![image-20200705144349404](/Users/yudong/learn/alibaba/java/imgs/image-20200705144349404.png)
+
+![image-20200705144449210](/Users/yudong/learn/alibaba/java/imgs/image-20200705144449210.png)
+
+![image-20200705175844931](/Users/yudong/learn/alibaba/java/imgs/image-20200705175844931.png)
+
+![image-20200705175913055](/Users/yudong/learn/alibaba/java/imgs/image-20200705175913055.png)
+
+Executor将操作委派给statementHandler处理：
+
+```java
+public interface StatementHandler {
+
+  Statement prepare(Connection connection, Integer transactionTimeout)
+      throws SQLException;
+
+  void parameterize(Statement statement)
+      throws SQLException;
+
+  void batch(Statement statement)
+      throws SQLException;
+
+  int update(Statement statement)
+      throws SQLException;
+
+  <E> List<E> query(Statement statement, ResultHandler resultHandler)
+      throws SQLException;
+
+  <E> Cursor<E> queryCursor(Statement statement)
+      throws SQLException;
+
+  BoundSql getBoundSql();
+
+  ParameterHandler getParameterHandler();
+
+}
+```
+
+statementHandler利用parameterHandler进行参数设置，利用resultSetHandler进行结果处理，这两个handler都利用了TypeHandler.
+
+parameterHandler 从boundSql里获取parameterMappings, 通过typeHandler设置sql参数
+
+resultSetHandler如下
+
+![image-20200705181148091](/Users/yudong/learn/alibaba/java/imgs/image-20200705181148091.png)
+
+### 插件原理
+
+四大插件对象
+
+Executor, StatementHandler,parameterHandler,resultSetHandler
+
+```java
+public interface Interceptor {
+
+  Object intercept(Invocation invocation) throws Throwable;
+
+  default Object plugin(Object target) {
+    return Plugin.wrap(target, this);
+  }
+
+  default void setProperties(Properties properties) {
+    // NOP
+  }
+
+}
+```
+
+```java
+public class InterceptorChain {
+
+  private final List<Interceptor> interceptors = new ArrayList<>();
+
+  public Object pluginAll(Object target) {
+    for (Interceptor interceptor : interceptors) {
+      target = interceptor.plugin(target);
+    }
+    return target;
+  }
+
+  public void addInterceptor(Interceptor interceptor) {
+    interceptors.add(interceptor);
+  }
+
+  public List<Interceptor> getInterceptors() {
+    return Collections.unmodifiableList(interceptors);
+  }
+
+}
+```
+
+```java
+Plugins.clas
+public static Object wrap(Object target, Interceptor interceptor) {
+  Map<Class<?>, Set<Method>> signatureMap = getSignatureMap(interceptor);
+  Class<?> type = target.getClass();
+  Class<?>[] interfaces = getAllInterfaces(type, signatureMap);
+  if (interfaces.length > 0) {
+    return Proxy.newProxyInstance(
+        type.getClassLoader(),
+        interfaces,
+        new Plugin(target, interceptor, signatureMap));
+  }
+  return target;
+}
+```
+
+只会为要拦截的接口创建代理，只拦截要拦截的方法
+
+
+
+多个拦截，add(A) add(B) 则先执行B，后执行A， B对A包装，A对四大对象包装
+
+
+
+一级缓存 存在BaseExecutor(executor父类）， SimpleExecutor, BatchExecutor,ReusedExecutor
+
+BaseExecutor加了一个缓存逻辑，具体操作还是子类完成，这是模版方法。
+
+二级缓存 （装饰器模式）
+
+```java
+if (cacheEnabled) {
+  executor = new CachingExecutor(executor);
+}
+```
+
+![image-20200705170352032](/Users/yudong/learn/alibaba/java/imgs/image-20200705170352032.png)
+
+一级缓存 key与刷新
+
+![image-20200705170544425](/Users/yudong/learn/alibaba/java/imgs/image-20200705170544425.png)
+

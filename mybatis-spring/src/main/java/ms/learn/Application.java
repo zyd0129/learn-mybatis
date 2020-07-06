@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.web.servlet.DispatcherServletAutoConfiguration;
 
 @SpringBootApplication
 @MapperScan("ms.learn.dao.mapper")
@@ -14,6 +15,8 @@ public class Application implements CommandLineRunner {
 
     @Autowired
     TeacherMapper teacherMapper;
+
+    DispatcherServletAutoConfiguration
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);

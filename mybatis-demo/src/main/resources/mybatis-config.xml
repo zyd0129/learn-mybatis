@@ -27,6 +27,7 @@
 <!--        <mapper resource="mappers/TeacherMapper.xml"/>-->
 
 <!--        这种方式，如果支持xml，需要将xml和接口放在同一个包下，而mvn默认是不收集java文件夹下资源文件的，需要配置mvn/resource-->
+<!--        <mapper class="mybatis.learn.dao.mapper.UserMapper"/>-->
         <package name="mybatis.learn.dao.mapper"/>
     </mappers>
 </configuration>
