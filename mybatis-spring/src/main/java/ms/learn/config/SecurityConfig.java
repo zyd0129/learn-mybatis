@@ -3,11 +3,14 @@ package ms.learn.config;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.EnableGlobalAuthentication;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 @Configuration
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter implements ApplicationContextAware {
 
     @Override
@@ -16,9 +19,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements Appl
         http.formLogin().and().httpBasic()
                 .and()
                 .authorizeRequests()
-                .antMatchers("/api/hello").permitAll()
+                .antMatchers("/api/admin").hasRole("ADMIN")
+                .antMatchers("/api/info").hasRole("USER")
+                .antMatchers("/api/**").authenticated()
 //                .antMatchers("/error").permitAll()
-                .anyRequest().authenticated();
+                .anyRequest().permitAll();
 
 //        http.
     }
