@@ -172,3 +172,15 @@ spring提供两种拦截方式
 
 - **Web拦截**：HttpSecurity对Web进行安全配置，内置了大量GenericFilterBean过滤器对URL进行拦截。负责认证的过滤器会通过AuthenticationManager进行认证，并将认证结果保存到SecurityContext。
 - **方法拦截**：Spring通过AOP技术（cglib/aspectj）对标记为@PreAuthorize、@PreFilter、@PostAuthorize、@PostFilter等注解的方法进行拦截，通过AbstractSecurityInterceptor调用AuthenticationManager进行身份认证（如果必要的话）。
+
+
+
+但是注意：还有监听器
+
+拦截调用链： filter->interceptor->controllerAdvice->aop
+
+从整体上讲，返还异常处理由两种方式：1.转到某个controller 2.response.write()
+
+
+
+多请求之间怎么共享登录？通过session.   SecurityContextPersistenceFilter是第二个过滤器，从session里取认证信息放到securityContext里，出去的时候，再把认证放到session里
