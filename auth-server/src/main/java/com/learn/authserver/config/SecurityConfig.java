@@ -12,6 +12,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // DelegatingPasswordEncoder 委托模式，或者是策略模式，可以动态决定 passwordEncode
+
         return new BCryptPasswordEncoder();
     }
 
