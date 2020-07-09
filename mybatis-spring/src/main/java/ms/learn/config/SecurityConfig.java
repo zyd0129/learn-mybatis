@@ -1,13 +1,14 @@
 package ms.learn.config;
 
+import ms.learn.auth.captcha.CaptchaFilter;
+import ms.learn.auth.captcha.DefaultCaptchaValidateFailureHandler;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.authentication.configuration.EnableGlobalAuthentication;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 @Configuration
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -15,8 +16,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements Appl
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-        http.formLogin().and().httpBasic()
+//        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        http.formLogin()
+                .and().httpBasic()
                 .and()
                 .authorizeRequests()
                 .antMatchers("/api/admin").hasRole("ADMIN")
@@ -25,7 +27,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements Appl
 //                .antMatchers("/error").permitAll()
                 .anyRequest().permitAll();
 
-//        http.
+
+        CaptchaFilter captchaFilter = new CaptchaFilter();
+        captchaFilter.setCaptchaValidateSuccessHandler(new DefaultCaptchaValidateFailureHandler());
+
+        http.addFilterBefore(captchaFilter, BasicAuthenticationFilter.class);
+
     }
 
     @Override
