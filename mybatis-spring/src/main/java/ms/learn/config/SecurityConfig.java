@@ -14,6 +14,11 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter implements ApplicationContextAware {
 
+    /**
+     * 配置授权
+     * @param http
+     * @throws Exception
+     */
     @Override
     protected void configure(HttpSecurity http) throws Exception {
 //        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
@@ -35,6 +40,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements Appl
 
     }
 
+    /**
+     * 配置认证相关
+     * @param auth
+     * @throws Exception
+     */
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
         auth.inMemoryAuthentication()

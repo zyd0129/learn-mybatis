@@ -10,6 +10,9 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
+/**
+ * 这里从模块设计的角度讲，security filter里的filter都是认证filter，这里的captchaValidate应该放在UsernameAndPasswordAuthenticationFilter里
+ */
 public class CaptchaFilter extends OncePerRequestFilter {
 
     //这里默认使用sendError->BasicErrorController统一处理，支持自定义处理，这就是可扩展性
@@ -28,6 +31,7 @@ public class CaptchaFilter extends OncePerRequestFilter {
                 validateCaptcha(iCaptcha, captcha);
             } catch (CaptchaException ex) {
                 captchaValidateSuccessHandler.onValidateFailure(request, response, ex);
+                // 在filter里最好不要抛出异常，否则所有都异常都转换成了500状态码,最好使用sendError()
                 return;
             }
         }
