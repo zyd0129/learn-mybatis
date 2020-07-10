@@ -184,3 +184,168 @@ spring提供两种拦截方式
 
 
 多请求之间怎么共享登录？通过session.   SecurityContextPersistenceFilter是第二个过滤器，从session里取认证信息放到securityContext里，出去的时候，再把认证放到session里
+
+
+
+# Spring Oauth2
+
+四种授权模式模式
+
+
+
+## 授权码（authorization_code)：
+
+1.http://localhost:8080/oauth/authorize?client_id=c1&response_type=code&scope=all&redirect_url="http://www.baidu.com"
+
+​	scope=all&redirect_url="http://www.baidu.com" 可以不用传，存在数据库里
+
+2.用户登录
+
+3.用户授权
+
+4.跳转到redirect_url, 返还code
+
+5.获取token
+
+```
+curl --location --request POST 'localhost:8080/oauth/token' \
+--header 'Authorization: Basic YzE6c2VjcmV0' \
+--header 'Cookie: JSESSIONID=5B5883E73DCA65C027B8C53DCD65F5BE' \
+--form 'client_id=c1' \
+--form 'client_secret=secret' \
+--form 'grant_type=authorization_code' \
+--form 'code=Gx6y0C'
+```
+
+6 check token http://localhost:8080/oauth/check_token?token=4983b202-5e14-44d3-9d75-7de1217c8eb7
+
+```json
+{
+    "aud": [
+        "res1"
+    ],
+    "user_name": "zyd",
+    "scope": [
+        "all"
+    ],
+    "active": true,
+    "exp": 1594409435,
+    "authorities": [
+        "AMDIN"
+    ],
+    "client_id": "c1"
+}
+```
+
+## 密码模式
+
+密码模式，直接返还token
+
+```java
+curl --location --request POST 'localhost:8080/oauth/token' \
+--header 'Authorization: Basic YzE6c2VjcmV0' \
+--header 'Cookie: JSESSIONID=8BF669882968098C527D46A29A424680' \
+--form 'client_id=c1' \
+--form 'client_secret=123456' \
+--form 'grant_type=password' \
+--form 'username=admin' \
+--form 'password=123456'
+```
+
+在spring中，必须配置authenticationManager，才能开启
+
+
+
+oauth2原理
+
+使用了两个过滤器链，oauth和普通认证链
+
+```java
+FilterChainProxy.class
+List<SecurityFilterChain> filterChains
+```
+
+oauth过滤器链拦截 /oauth/token，/oauth/token_key，/oauth/check_token
+
+这里针对client_id,client_secret进行认证，默认是basic认证，如果想要表单认证，需要做一下配置
+
+```java
+@Override
+    public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
+//        security.tokenKeyAccess("permitAll()")//公有密钥访问端点
+//                .checkTokenAccess("permitAll()")
+              security.allowFormAuthenticationForClients(); //容许表单提交，默认是basic
+    }
+```
+
+
+
+最简单搭建方式
+
+1.配置webSecurity
+
+```java
+@Configuration
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        // DelegatingPasswordEncoder 委托模式，或者是策略模式，可以动态决定 passwordEncode
+        return new BCryptPasswordEncoder();
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.inMemoryAuthentication().withUser("admin").password(passwordEncoder().encode("123456")).roles("ADMIN");
+    }
+}
+```
+
+2.配置AuthorizationServerConfig
+
+```java
+@Configuration
+@EnableAuthorizationServer
+public class AuthorizationServerConfig  extends AuthorizationServerConfigurerAdapter {
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
+    /**
+     * 配置客户端
+     * @param clients
+     * @throws Exception
+     */
+    @Override
+    public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+//        clients.withClientDetails(clientDetailsService());
+        clients.inMemory().withClient("c1")
+                .secret(passwordEncoder.encode("secret"))
+                .resourceIds("res1") //资源
+                .authorizedGrantTypes("authorization_code", "password", "client_credentials","implicit","refresh_token")
+                //这里没有常量，是因为这个是要读库的
+                .scopes("all")//允许的授权范围
+                .autoApprove(false)
+//                .authorities()  //用来配合scope,如果scope不够用的话
+                .redirectUris("http://www.baidu.com");
+
+    }
+    /**
+     * 配置端点权限,即配置另一条过滤器链的权限，这条过滤器链拦截 /oauth/token，/oauth/token_key，/oauth/check_token
+     * @param security
+     * @throws Exception
+     */
+    @Override
+    public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
+//        security.tokenKeyAccess("permitAll()")//公有密钥访问端点
+//                .checkTokenAccess("permitAll()")
+              security.allowFormAuthenticationForClients(); //容许表单提交，默认是basic
+    }
+}
+
+```
+
+```
+client过滤器链 ClientCredentialsTokenEndpointFilter 只过滤 /oauth/token POST
+user过滤器链 UsenameAndPass...Filter 只过滤 /login  POST
+```

@@ -13,11 +13,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class CustomUserDetailService implements UserDetailsService {
 
-    @Autowired
-    PasswordEncoder passwordEncoder;
     @Override
     public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
 
-        return new User("zyd",passwordEncoder.encode("123456"), AuthorityUtils.createAuthorityList("AMDIN"));
+        return new User("zyd", "$2a$10$5NDp62dc6vO/nem1NnKnNuvCbRu9h3nrJtWQAl5hTfltGtJ1nSqEy", AuthorityUtils.createAuthorityList("AMDIN"));
     }
 }
