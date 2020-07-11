@@ -145,3 +145,31 @@ InMemoryTokenStore,JdbcTokenStore,JWTTokenStore
 
 
 开放接口，对第三方使用，采用网关？？ 开放接口和内部接口最好分开  /public
+
+
+
+Oauth2 与sso的区别
+
+假设有个系统A，B
+
+sso 是指 用户在A登录了，用户在B操作时也登录了，都是用户在操作
+
+oauth2是A系统 操作B系统，用户只在A系统操作。
+
+![image-20200709233826409](/Users/yudong/learn/alibaba/java/imgs/image-20200709233826409.png)
+
+sso是用户操作A，操作B
+
+oauth是用户操作A，A操作B
+
+
+
+oauth四种模式
+
+授权模式 用户授权  返还授权码，服务端 拿着 授权码 去获取 token，用token获取资源
+
+password  是用户提供密码给客户端，客户端问授权服务器，要token
+
+简化模式 是对授权模式的简化，授权服务器不返还授权码，直接返还token，token直接暴露在外，有一定不安全
+
+客户端模式，不需要用户参与，客户端凭借client_id client_secret直接获取token，获取资源

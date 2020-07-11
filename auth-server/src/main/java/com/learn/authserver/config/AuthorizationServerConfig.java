@@ -119,6 +119,7 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
     public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
 
         endpoints.authenticationManager(authenticationManager) //密码模式需要
+//                .tokenServices() //令牌服务
                 .tokenStore(tokenStore())
                 .approvalStore(approvalStore())
                 .authorizationCodeServices(authorizationCodeServices())//授权码模式需要
