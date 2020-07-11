@@ -15,10 +15,16 @@ import org.springframework.security.oauth2.provider.approval.JdbcApprovalStore;
 import org.springframework.security.oauth2.provider.client.JdbcClientDetailsService;
 import org.springframework.security.oauth2.provider.code.AuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.code.JdbcAuthorizationCodeServices;
+import org.springframework.security.oauth2.provider.token.AccessTokenConverter;
+import org.springframework.security.oauth2.provider.token.DefaultAccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JdbcTokenStore;
+import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
+import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
+import org.springframework.security.oauth2.provider.token.store.KeyStoreKeyFactory;
 
 import javax.sql.DataSource;
+import java.security.KeyPair;
 
 @Configuration
 @EnableAuthorizationServer
@@ -66,7 +72,7 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
      */
     @Override
     public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
-//        security.tokenKeyAccess("permitAll()")//公有密钥访问端点
+        security.tokenKeyAccess("permitAll()");//公有密钥jwt访问端点
 //                .checkTokenAccess("isAuthenticated()")
         security.allowFormAuthenticationForClients(); //容许表单提交，默认是basic
         security.checkTokenAccess("permitAll()");
@@ -80,7 +86,24 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
     // token存储策略
     @Bean
     public TokenStore tokenStore() {
-        return new JdbcTokenStore(dataSource);
+//        return new JdbcTokenStore(dataSource);
+        return new JwtTokenStore(jwtAccessTokenConverter());
+    }
+
+    @Bean
+    public JwtAccessTokenConverter jwtAccessTokenConverter() {
+        JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
+        converter.setSigningKey("secret");
+
+//        JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
+//        KeyPair keyPair = new KeyStoreKeyFactory
+//                (keyProperties.getKeyStore().getLocation(), keyProperties.getKeyStore().getSecret().toCharArray())
+//                .getKeyPair(keyProperties.getKeyStore().getAlias(),keyProperties.getKeyStore().getPassword().toCharArray());
+//        converter.setKeyPair(keyPair);
+//        //配置自定义的CustomUserAuthenticationConverter
+//        DefaultAccessTokenConverter accessTokenConverter = (DefaultAccessTokenConverter) converter.getAccessTokenConverter();
+//        accessTokenConverter.setUserTokenConverter(customUserAuthenticationConverter);
+        return converter;
     }
 
     //授权模式，用户授权客户端记录
@@ -120,6 +143,8 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
 
         endpoints.authenticationManager(authenticationManager) //密码模式需要
                 .tokenStore(tokenStore())
+                // 配置JwtAccessToken转换器
+                .tokenEnhancer(jwtAccessTokenConverter())
                 .approvalStore(approvalStore())
                 .authorizationCodeServices(authorizationCodeServices())//授权码模式需要
         ;

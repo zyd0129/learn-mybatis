@@ -1,0 +1,6 @@
+encrypt:
+  key-store:
+    location: application.yml
+    secret: 加盐
+    password: 密码
+    alias: 别名  #一个keyStore里有多个公钥私钥对

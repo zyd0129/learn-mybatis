@@ -4,7 +4,7 @@ SSO  sigle-sign-on
 
 常见解决方案
 
-1.Central Authentication Service，基于session-cookie 但是不能提供三方登录，token一般存在redis或者mysql中实现集群认证服务器
+1.Central Authentication Service，基于session-cookie 但是不能提供三方登录，token一般存在redis或者mysql中实现集群认证服务器。 认证服务器必须基于cookie。
 
 登录流程：
 
@@ -145,3 +145,140 @@ InMemoryTokenStore,JdbcTokenStore,JWTTokenStore
 
 
 开放接口，对第三方使用，采用网关？？ 开放接口和内部接口最好分开  /public
+
+
+
+spring-oauth jwt 配置
+
+```
+encrypt:
+  key-store:
+    location: application.yml
+    secret: 加盐
+    password: 密码 //密钥库访问密码
+    alias: 密钥别名  #一个keyStore里有多个公钥私钥对
+```
+
+jwt原理：token需要校验，传统方式需要请求到认证服务器进行校验，而jwt通过加解密来进行验证，只要资源服务器能解密就可以，不需要请求认证服务器了。这里要防止别人伪造令牌，所以加密凭证要保证安全，两种方式：
+
+对称加密：认证服务器和资源服务器保存相同的secrete
+
+非对称加密：RSA，认证服务器保存私钥，私钥加密（私钥也可以用来解密） 资源服务器保存公钥，公钥解密
+
+生成密钥之后，是有RSA算法，生成token; 生成token的算法 应该要和生成密钥的算法一样，最起码支持
+
+
+
+密钥生成工具 Keytool  公钥导出工具 openSSL
+
+
+
+验证码登录实现方案：
+
+1.session  验证码存在session里
+
+2.无session，对验证码加密，讲验证码密文 和 图片 一起发送给客户端， 客户端提交的时候 需要提交验证码密码+验证码；服务端对密文解密后 和验证码对比
+
+定义一个filter,注册在UsernameAndP...之前，因为时配合UsernameAndP..所以要配置只拦截 /login POST方法
+
+
+
+短信验证码：
+
+1.session 验证码存在session
+
+2.验证码存在库里， 根据mobile查询
+
+可以使用filter实现，也可通过provider实现，类似UsernameAndP..Token  AuthenticationManager AuthenticationProvider
+
+安全过滤器链上的filter不要使用注解，要手动生成；否则会在原生过滤器链上 额外添加了一个过滤器。
+
+
+
+jwt令牌结构，json结构
+
+header + payload + 签名
+
+payload设计：1.包含用户认证信息 2.其他辅助信息，如expiredTime等
+
+jwt 是对摘要加密，对称加密，生成hash摘要，需要一个盐，也就是secret
+
+
+
+jwt安全考虑
+
+使用https，避免网络层面避免jwt泄露，jwt是明文的，header,payload只是简单base64加密
+
+如果使用secret对称加密，要定期换密码；//这个对程序员是透明的，如果程序员泄露了，就完了
+
+或者使用非对称加密 //只有开发oauth的知道
+
+怎么防内部泄露？
+
+
+
+jwt认证流程，生成jwt token
+
+jwt token 授权流程
+
+jwt token 为什么要支持刷新，token过期之后，用户要重新登录，再一次输密码，为了提高用户体验，所以要刷新。
+
+刷新令牌：根据旧的令牌 生成新的令牌
+
+
+
+jwt问题：
+
+1.jwt对应的信息被修改，无法即使响应，老的jwt还是旧的信息
+
+2.注销问题，特别针对单点登录，只要jwt未过期，就还能正常访问
+
+解决方案：
+
+1.维护一个redis，认证的时候查询下redis是否存在改jwt token，jwt被注销或修改，则从redis里删除，但这样失去了快速校验 Token 的优点。
+
+2.多采用短期令牌，比如令牌有效期是 20 分钟，这样可以一定程度上降低注销后 Token 可用性的风险
+
+3.过期问题，就要去刷新令牌，如果监测到token过期，就要根据refresh_token去刷新,注销的时候要把refresh_token干掉；这个机制也比较负责，建议直接使用
+
+spring-oauth spring-oaut-sso
+
+由于sso是基于cookie,后台使用了session。如果为了实现oauth集群，需要使用redis-session。
+
+
+
+跨域访问(CORS)解决方案
+
+1.使用nigix 代理 吧前端和后端都放在代理后 这样就同源了
+
+
+
+基于oauth2 jwt实现SSO, 核心原理认证服务器仍然是基于cookie的, 只不过在验证token的时候，没有向认证服务器端请求验证，获取用户信息（状态，session），可以说是一种无状态会话
+
+1.使用授权码模式，不使用密码模式，如果使用密码模式，在不同应用，都需要客户提交用户名和密码，就不是单点登录了
+
+2.autoApprove(true)
+
+3.为了简便开发，使用@EnableOAuth2Sso
+
+
+
+有状态会话： cookie+sesssion  或者 token+session
+
+无状态会话：只有token
+
+也就是说服务器有无session，就是有无状态
+
+无状态就是 会话信息只存在客户端
+
+
+
+网关与权限
+
+1.如果网关做统一权限，内部服务之间调用怎么控制权限？ url作为资源，一个权限对应一个url。这里必须要求所有微服务之间调用都通过网关，禁止直接调用
+
+2.在网关层负责token解析，认证，不做权限控制，用户信息放在header里，从微服务出去的请求也带上权限信息
+
+
+
+在微服务具体开发过程中，注册/登录可能是另一个微服务提供的功能，需要后台restTemplate远程调用oauth服务。或者由认证服务器提供注册功能，或者单点登录系统。。。。。很多情况，具体要看架构设计。
