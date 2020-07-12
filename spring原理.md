@@ -1,6 +1,92 @@
-# spring ioc
+# spring iocs
 
-## spring-mybatis中间件
+## ioc与aop
+
+什么是ioc？控制反转
+
+不用手动创建对象和管理对象之间的关系。控制指对象的创建和之间的关系；反转是指有我们自己管理交给框架管理。
+
+我想这也是beanFactory只提供一个get方法的原因，get屏蔽了对象的创建过程。对象交给容器创建了，我们只需要获取即可，所以只提供get方法。
+
+DI 依赖注入
+
+从容器的角度，维护对象间依赖关系。
+
+依赖倒置
+
+针对接口编程，而不是具体实现，借助DI，实现接口和具体实现类之间的耦合。 针对接口编程，new关键字会带来耦合问题。
+
+```java
+class IService {
+IService a= new IServiceImpl();
+}
+```
+
+aop
+
+相同业务逻辑（执行流程）有相同部分（子流程）。这叫横切逻辑。业务逻辑执行流程是一种垂直逻辑。
+
+
+
+## 手写ioc思路
+
+1.去除new，通过反射机制，class.forName()实例化，可以把类限定名配置在xml中，也就说通过xml配置产生对象
+
+2.通过反射技术实例化对象，生产对象就是可以定义一个工厂，工厂类解析xml，根据反射技术实例化对象
+
+3.生产的对象要放在一个容器里存储
+
+
+
+任务一： 解决new，通过xml反射生产
+
+可以简单定义个一个工厂类
+
+```java
+class BeanFactory{
+  private static Map<String,Object> = new HashMap<>();
+  public static Object getBean(String id){}
+  static {
+    //这里直接利用dom4j解析xml, 根据反射机制生产对象，放入map
+  }
+}
+```
+
+任务二：维护依赖
+
+
+
+## 事务
+
+ACID 
+
+原子性，一致性，隔离性，持久性
+
+隔离性：
+
+- 
+
+spring的事务，就是数据库事务。
+
+回滚：默认是只有发生RuntimeException时才回滚，可以通过设置rollbackFor属性
+
+事务的传播机制：7种
+
+required：默认，不存在创建，存在使用已存在的
+
+new(挂起当前事务,
+
+support
+
+Not support
+
+Mandatory
+
+nest（外部回滚，会连代内部回滚),
+
+never
+
+# spring-mybatis中间件
 
 ### @MapperScan原理
 
