@@ -323,7 +323,7 @@ public UserMapper userMapper() throws Exception {
 
 - **强大的 CRUD 操作**：内置通用 Mapper、通用 Service，仅仅通过少量配置即可实现单表大部分 CRUD 操作，更有强大的条件构造器，满足各类使用需求. 直接继承BaseMap即可
 - 主键生成策略 默认 雪花生成策略， 可以设置为自增
-- 动态生成sql
+- 动态生成sql，这个原理是在启动的时候，mybatis plus会扫描所有mapper，然后自动注入sql
 - 自动填充，比如时间
 - 乐观锁
 
@@ -392,7 +392,7 @@ executor负责缓存的维护
 
 ### 一、创建SqlSessionFactory
 
-SqlSessionFactory是包含Configuration, 基本mybatis是通过解析xml获取，根据Configuration创建SqlSession.
+SqlSessionFactory是包含Configuration, 基本mybatis是通过解析xml获取，根据Configuration创建SqlSession. 使用建造者模式，直白讲，就是使用多个简单的对象，一步步构建一个复杂的对象。mybatis的初始化工作非常复杂，不是一个constructure可以简单搞定的。
 
 
 
@@ -511,7 +511,9 @@ Mybatis-spring扫描mapper的几种方式
 
 之后注入service时，会调用MapperFactoryBean的getObject方法，即getSqlSession().getMapper(this.mapperInterface);获得mapper的代理对象。
 
-创建mapper代理的过程，总结下来就是先解析配置，注册mapper代理工厂，创建的时候，先生成一个sqlSession对象，封装了configuration和executor，之后创建一个MapProxy(实现InvocationHandler), 之后mapper代理工厂，创建对应mapper的代理类。
+创建mapper代理的过程，总结下来就是在mybatis初始化的时候，先解析配置，在mapperRegister里注册了mapper代理工厂(mapperProxyFactory)，用于生产代理；sqlSession.getMapper()创建的时候，先通过接口名获取mapperProxyFactory, mapperProxyFactory生产代理对象，代理对象的invokeHandler封装了sqlSession,接口类，methodCache.
+
+一个sqlSession对象，封装了configuration和executor。
 
 可以说mapper的所有操作都是由sqlSession完成，sqlSession根据接口方法名，查找对应statement，之后解析、执行、结果转换。
 
@@ -656,3 +658,6 @@ if (cacheEnabled) {
 
 ![image-20200705170544425](/Users/yudong/learn/alibaba/java/imgs/image-20200705170544425.png)
 
+# 注意事项
+
+1.定义实体类时候，成员变量使用包装类，不要使用基本类，比如int, boolean, 因为包装类的默认值是null，基本类型都有具体值，不便于mybatis处理，尤其是动态sql的时候

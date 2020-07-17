@@ -12,6 +12,7 @@
         <module>mybatis-demo</module>
         <module>mybatis-plust-demo</module>
         <module>mybatis-spring</module>
+        <module>auth-server</module>
     </modules>
 
     <!--    <dependencyManagement>-->

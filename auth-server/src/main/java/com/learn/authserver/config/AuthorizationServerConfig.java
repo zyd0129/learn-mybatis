@@ -142,6 +142,7 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
     public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
 
         endpoints.authenticationManager(authenticationManager) //密码模式需要
+//                .tokenServices() //令牌服务
                 .tokenStore(tokenStore())
                 // 配置JwtAccessToken转换器
                 .tokenEnhancer(jwtAccessTokenConverter())
